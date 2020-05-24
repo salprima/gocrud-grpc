@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/salprima/gocrud-grpc/internal/protoapi"
+	"github.com/salprima/gocrud-grpc/internal/repository"
 	"github.com/salprima/gocrud-grpc/internal/service"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 )
 
@@ -32,9 +37,32 @@ func init() {
 }
 
 func main() {
+
+	log.Println("Starting up GRPC server...")
+
+	log.Println("Creating connection to database...")
+	client, err := mongo.NewClient(options.Client().ApplyURI(viper.GetString("app.mongodb.uri")))
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	db := client.Database(viper.GetString("app.mongodb.database"))
+	err = client.Connect(ctx)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	log.Println("Connected to database...")
+
 	server := grpc.NewServer()
 
-	protoapi.RegisterUserApiServer(server, &service.UserSvc{})
+	urepo := repository.NewUserRepo(db)
+	usvc := service.NewUserSvc(urepo)
+	protoapi.RegisterUserApiServer(server, usvc)
 
 	port := ":" + viper.GetString("app.grpc.port")
 	listener, err := net.Listen("tcp", port)

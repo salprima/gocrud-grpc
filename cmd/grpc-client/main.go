@@ -41,7 +41,21 @@ func main() {
 
 	userApi := protoapi.NewUserApiClient(client)
 
-	id := &wrapperspb.StringValue{Value: "5ec2d4089ef44b16a82b5b4f"}
-	user, _ := userApi.GetUserByID(context.Background(), id)
+	userDto := &protoapi.UserDto{
+		Name:  "John Doe",
+		Email: "johndoe@yopmail.com",
+	}
+
+	user, err := userApi.CreateUser(context.Background(), userDto)
+	if err != nil {
+		log.Fatalf("Fail CreateUser: %v", err)
+	}
 	log.Println(user)
+
+	userID := &wrapperspb.StringValue{Value: user.Id}
+	newUser, err := userApi.GetUserByID(context.Background(), userID)
+	if err != nil {
+		log.Fatalf("Fail GetUserByID: %v", err)
+	}
+	log.Println(newUser)
 }
