@@ -1,0 +1,6 @@
+app:
+  grpc:
+    port: 7070
+  mongodb:
+    uri: mongodb://root:password@localhost:27017
+    database: gocrud-grpc

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package protoapi;
+
+import "google/protobuf/Empty.proto";
+import "google/protobuf/Wrappers.proto";
+
+option go_package = "internal/protoapi";
+
+
+message UserDto {
+    string id = 1;
+    string name = 2;
+    string email = 3;
+}
+
+message UserDtoList {
+    repeated UserDto list = 1;
+}
+
+service UserApi {
+    rpc CreateUser(UserDto) returns (google.protobuf.Empty) {}
+    rpc GetUserByID(google.protobuf.StringValue) returns (UserDto) {}
+    rpc ListUsers(google.protobuf.Empty) returns (UserDtoList) {}
+    rpc UpdateUser(UserDto) returns (google.protobuf.Empty) {}
+    rpc DeleteUserByID(google.protobuf.StringValue) returns (google.protobuf.Empty) {}
+}
