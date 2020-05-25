@@ -21,6 +21,7 @@ message UserDtoList {
 service UserApi {
     rpc CreateUser(UserDto) returns (UserDto) {}
     rpc GetUserByID(google.protobuf.StringValue) returns (UserDto) {}
+    rpc GetUserByEmail(google.protobuf.StringValue) returns (UserDto) {}
     rpc ListUsers(google.protobuf.Empty) returns (UserDtoList) {}
     rpc UpdateUser(UserDto) returns (UserDto) {}
     rpc DeleteUserByID(google.protobuf.StringValue) returns (google.protobuf.BoolValue) {}
