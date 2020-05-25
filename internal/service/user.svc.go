@@ -12,6 +12,7 @@ import (
 	"github.com/salprima/gocrud-grpc/internal/repository"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // UserService
@@ -41,14 +42,7 @@ func (s *UserSvc) CreateUser(ctx context.Context, dto *protoapi.UserDto) (*proto
 		return nil, err
 	}
 
-	userid, err := hex.DecodeString(user.ID.Hex())
-	userDto := &protoapi.UserDto{
-		Id:    string(userid),
-		Name:  user.Name,
-		Email: user.Email,
-	}
-
-	return userDto, nil
+	return s.toUserDto(&user), nil
 }
 
 // Get user by id
@@ -61,19 +55,29 @@ func (s *UserSvc) GetUserByID(ctx context.Context, id *wrappers.StringValue) (*p
 		return nil, err
 	}
 
-	userid, err := hex.DecodeString(user.ID.Hex())
-	userDto := &protoapi.UserDto{
-		Id:    string(userid),
-		Name:  user.Name,
-		Email: user.Email,
-	}
-
-	return userDto, nil
+	return s.toUserDto(&user), nil
 }
 
-//
+// Get all users
 func (s *UserSvc) ListUsers(ctx context.Context, e *empty.Empty) (*protoapi.UserDtoList, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListUsers not implemented")
+	log.Printf("ListUsers() \n")
+
+	var udtos []*protoapi.UserDto
+	users, err := s.urepo.FindAll()
+	if err != nil {
+		log.Printf("%v", err)
+		return nil, err
+	}
+
+	for _, u := range users {
+		udtos = append(udtos, s.toUserDto(&u))
+	}
+
+	userDtoList := &protoapi.UserDtoList{
+		List: udtos,
+	}
+
+	return userDtoList, nil
 }
 
 //
@@ -81,7 +85,26 @@ func (s *UserSvc) UpdateUser(ctx context.Context, u *protoapi.UserDto) (*protoap
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
 }
 
-//
+// Delete user by id
 func (s *UserSvc) DeleteUserByID(ctx context.Context, id *wrappers.StringValue) (*wrappers.BoolValue, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteUserByID not implemented")
+	log.Printf("DeleteUserByID(%s) \n", id.GetValue())
+
+	deleted, err := s.urepo.DeleteByID(id.GetValue())
+	if err != nil {
+		log.Printf("%v", err)
+		return nil, err
+	}
+
+	return &wrapperspb.BoolValue{Value: deleted}, nil
+}
+
+// mapping user model to userdto
+func (s *UserSvc) toUserDto(u *model.User) *protoapi.UserDto {
+	userid, _ := hex.DecodeString(u.ID.Hex())
+	udto := &protoapi.UserDto{
+		Id:    string(userid),
+		Name:  u.Name,
+		Email: u.Email,
+	}
+	return udto
 }
