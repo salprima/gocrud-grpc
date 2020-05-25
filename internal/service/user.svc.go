@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/hex"
 	"log"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -10,6 +9,7 @@ import (
 	"github.com/salprima/gocrud-grpc/internal/model"
 	"github.com/salprima/gocrud-grpc/internal/protoapi"
 	"github.com/salprima/gocrud-grpc/internal/repository"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -58,6 +58,19 @@ func (s *UserSvc) GetUserByID(ctx context.Context, id *wrappers.StringValue) (*p
 	return s.toUserDto(&user), nil
 }
 
+// Get user by email
+func (s *UserSvc) GetUserByEmail(ctx context.Context, email *wrappers.StringValue) (*protoapi.UserDto, error) {
+	log.Printf("GetUserByEmail(%s) \n", email.GetValue())
+
+	user, err := s.urepo.FindByEmail(email.GetValue())
+	if err != nil {
+		log.Printf("%v", err)
+		return nil, err
+	}
+
+	return s.toUserDto(&user), nil
+}
+
 // Get all users
 func (s *UserSvc) ListUsers(ctx context.Context, e *empty.Empty) (*protoapi.UserDtoList, error) {
 	log.Printf("ListUsers() \n")
@@ -80,9 +93,33 @@ func (s *UserSvc) ListUsers(ctx context.Context, e *empty.Empty) (*protoapi.User
 	return userDtoList, nil
 }
 
-//
-func (s *UserSvc) UpdateUser(ctx context.Context, u *protoapi.UserDto) (*protoapi.UserDto, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
+// Update user
+func (s *UserSvc) UpdateUser(ctx context.Context, dto *protoapi.UserDto) (*protoapi.UserDto, error) {
+	log.Printf("UpdateUser(%v) \n", dto)
+
+	if dto.Id == "" {
+		return nil, status.Error(codes.FailedPrecondition, "UpdateUser must provide UserID")
+	}
+
+	userID, err := primitive.ObjectIDFromHex(dto.Id)
+	if err != nil {
+		log.Printf("Invalid UserID(%s) \n", dto.Id)
+		return nil, status.Errorf(codes.Internal, "%v", err)
+	}
+
+	updateUser := &model.User{
+		ID:    userID,
+		Name:  dto.Name,
+		Email: dto.Email,
+	}
+
+	user, err := s.urepo.Update(updateUser)
+	if err != nil {
+		log.Printf("Fail UpdateUser %v \n", err)
+		return nil, status.Errorf(codes.Internal, "%v", err)
+	}
+
+	return s.toUserDto(&user), nil
 }
 
 // Delete user by id
@@ -100,9 +137,8 @@ func (s *UserSvc) DeleteUserByID(ctx context.Context, id *wrappers.StringValue) 
 
 // mapping user model to userdto
 func (s *UserSvc) toUserDto(u *model.User) *protoapi.UserDto {
-	userid, _ := hex.DecodeString(u.ID.Hex())
 	udto := &protoapi.UserDto{
-		Id:    string(userid),
+		Id:    u.ID.Hex(),
 		Name:  u.Name,
 		Email: u.Email,
 	}

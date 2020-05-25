@@ -64,6 +64,22 @@ func (r *UserRepo) FindByID(id string) (model.User, error) {
 	return user, nil
 }
 
+// Find user by its email
+func (r *UserRepo) FindByEmail(email string) (model.User, error) {
+	log.Printf("FindByEmail(%s) \n", email)
+	ctx, cancel := timeoutContext()
+	defer cancel()
+
+	var user model.User
+	err := r.col.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		log.Println(err)
+		return user, err
+	}
+
+	return user, nil
+}
+
 // Find all user
 func (r *UserRepo) FindAll() ([]model.User, error) {
 	log.Println("FindAll()")
@@ -93,6 +109,30 @@ func (r *UserRepo) FindAll() ([]model.User, error) {
 	}
 
 	return users, nil
+}
+
+// Update single user
+func (r *UserRepo) Update(u *model.User) (model.User, error) {
+	log.Printf("Update(%v) \n", u)
+	ctx, cancel := timeoutContext()
+	defer cancel()
+
+	filter := bson.M{"_id": u.ID}
+	update := bson.M{
+		"$set": bson.M{
+			"name":  u.Name,
+			"email": u.Email,
+		},
+	}
+
+	var user model.User
+	err := r.col.FindOneAndUpdate(ctx, filter, update).Decode(&user)
+	if err != nil {
+		log.Printf("ERR 115 %v", err)
+		return user, err
+	}
+
+	return user, nil
 }
 
 // Delete user by its id
