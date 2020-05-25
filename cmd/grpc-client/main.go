@@ -9,6 +9,7 @@ import (
 	"github.com/salprima/gocrud-grpc/internal/protoapi"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -41,21 +42,120 @@ func main() {
 
 	userApi := protoapi.NewUserApiClient(client)
 
-	userDto := &protoapi.UserDto{
-		Name:  "John Doe",
-		Email: "johndoe@yopmail.com",
+	// Create users from sample
+	log.Println("Creating sample users...")
+	var allUsers []*protoapi.UserDto // temporarily load users in memory
+	sampleUsers := sampleUsers()
+	for _, userDto := range sampleUsers {
+		user, err := userApi.CreateUser(context.Background(), userDto)
+		if err != nil {
+			log.Fatalf("Fail CreateUser: %v \n", err)
+		}
+		allUsers = append(allUsers, user)
+		log.Println(user)
 	}
+	log.Println("Sample users created")
+	fmt.Printf("%s\n%s\n%s\n", ">", ">", ">")
 
-	user, err := userApi.CreateUser(context.Background(), userDto)
+	// Get user by id
+	log.Println("Get user by id...")
+	ronaldo := allUsers[0]
+	userID := &wrapperspb.StringValue{Value: ronaldo.Id}
+	user, err := userApi.GetUserByID(context.Background(), userID)
 	if err != nil {
-		log.Fatalf("Fail CreateUser: %v", err)
+		log.Fatalf("Fail GetUserByID: %v \n", err)
 	}
 	log.Println(user)
+	log.Println("Get user by id DONE")
+	fmt.Printf("%s\n%s\n%s\n", ">", ">", ">")
 
-	userID := &wrapperspb.StringValue{Value: user.Id}
-	newUser, err := userApi.GetUserByID(context.Background(), userID)
+	// Get all users
+	log.Println("Listing all users...")
+	users, err := userApi.ListUsers(context.Background(), &emptypb.Empty{})
 	if err != nil {
-		log.Fatalf("Fail GetUserByID: %v", err)
+		log.Fatalf("Fail ListUsers: %v \n", err)
 	}
-	log.Println(newUser)
+	log.Println("ListUsers >>>>>")
+	for _, u := range users.List {
+		log.Println(u)
+	}
+	log.Println("Listing all users DONE")
+	fmt.Printf("%s\n%s\n%s\n", ">", ">", ">")
+
+	// Delete user by id
+	log.Println("Delete user by id...")
+	messi := allUsers[1]
+	userIdToDelete := messi.Id //change this id according to your data
+	deleted, err := userApi.DeleteUserByID(context.Background(), &wrapperspb.StringValue{Value: userIdToDelete})
+	if err != nil {
+		log.Fatalf("Fail DeleteUserByID: %v \n", err)
+	}
+	if deleted.GetValue() {
+		log.Printf("UserID(%s) deleted \n", userIdToDelete)
+	}
+	log.Println("Delete user by id DONE")
+	fmt.Printf("%s\n%s\n%s\n", ">", ">", ">")
+
+	// Update user
+	log.Println("Updating user...")
+	delpiero := allUsers[2]
+	userDtoUpdate := &protoapi.UserDto{
+		Id:    delpiero.Id, //change this id according to your data
+		Name:  "Alessandro Del Piero",
+		Email: "adp10@juventus.com",
+	}
+	// don't confuse, this method return user before update
+	// if you want to return updated result, you can call GetByUserID after
+	oldUser, err := userApi.UpdateUser(context.Background(), userDtoUpdate)
+	if err != nil {
+		log.Fatalf("Fail UpdateUser: %v \n", err)
+	}
+	log.Printf("Before Update >>>>> %v \n", oldUser)
+	log.Println("Updating user DONE")
+	fmt.Printf("%s\n%s\n%s\n", ">", ">", ">")
+
+	// Get user by email
+	log.Println("Get user by email...")
+	umail := &wrapperspb.StringValue{Value: "adp10@juventus.com"}
+	updatedUser, err := userApi.GetUserByEmail(context.Background(), umail)
+	if err != nil {
+		log.Fatalf("Fail GetUserByEmail: %v \n", err)
+	}
+	log.Println(updatedUser)
+	log.Println("Get user by email DONE")
+
+}
+
+func sampleUsers() []*protoapi.UserDto {
+
+	var sampleUsers []*protoapi.UserDto
+
+	ronaldo := &protoapi.UserDto{
+		Name:  "Cristiano Ronaldo",
+		Email: "ronaldo7@yopmail.com",
+	}
+	messi := &protoapi.UserDto{
+		Name:  "Lionel Messi",
+		Email: "messi10@yopmail.com",
+	}
+	delpiero := &protoapi.UserDto{
+		Name:  "Del Piero",
+		Email: "delpiero10@yopmail.com",
+	}
+	pogba := &protoapi.UserDto{
+		Name:  "Paul Pogba",
+		Email: "pogba6@yopmail.com",
+	}
+	nedved := &protoapi.UserDto{
+		Name:  "Pavel Nedved",
+		Email: "nedved11@yopmail.com",
+	}
+
+	sampleUsers = append(sampleUsers, ronaldo)
+	sampleUsers = append(sampleUsers, messi)
+	sampleUsers = append(sampleUsers, delpiero)
+	sampleUsers = append(sampleUsers, pogba)
+	sampleUsers = append(sampleUsers, nedved)
+
+	return sampleUsers
 }
